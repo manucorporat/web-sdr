@@ -1,4 +1,4 @@
-import { Device } from "../device";
+import { Device, div } from "../device";
 
 
 const R820T_I2C_ADDR = 0x34;
@@ -384,7 +384,7 @@ export class TunnerR82xx implements TunnerCtx {
 
   async r82xx_set_mux(freq: number) {
     /* Get the proper frequency range */
-    freq = freq / 1000000;
+    freq = div(freq, 1000000);
     let i = 0;
     for (i = 0; i < freq_ranges.length - 1; i++) {
       if (freq < freq_ranges[i + 1].freq) {
@@ -478,7 +478,7 @@ export class TunnerR82xx implements TunnerCtx {
       reg_0b |= 15 - i;
       real_bw += r82xx_if_low_pass_bw_table[i];
 
-      this.int_freq -= real_bw / 2;
+      this.int_freq -= div(real_bw, 2);
     }
 
     await this.r82xx_write_reg_mask(0x0a, reg_0a, 0x10);
@@ -916,9 +916,9 @@ export class TunnerR82xx implements TunnerCtx {
     const vco_max = vco_min * 2;
 
     /* Frequency in kHz */
-    const freq_khz = ((freq + 500) / 1000) | 0;
+    const freq_khz = div(freq + 500, 1000);
     const pll_ref = this.xtal;
-    const pll_ref_khz = ((pll_ref + 500) / 1000) | 0;
+    const pll_ref_khz = div(pll_ref + 500, 1000);
 
     await this.r82xx_write_reg_mask(0x10, 0, 0x10);
 
@@ -960,16 +960,16 @@ export class TunnerR82xx implements TunnerCtx {
 
     await this.r82xx_write_reg_mask(0x10, div_num << 5, 0xe0);
 
-    const vco_freq = (freq | 0) * (mix_div | 0);
-    const nint = (vco_freq / (2 * pll_ref)) | 0;
-    let vco_fra = ((vco_freq - 2 * pll_ref * nint) / 1000) | 0;
+    const vco_freq = freq * mix_div;
+    const nint = div(vco_freq, 2 * pll_ref);
+    let vco_fra = div(vco_freq - 2 * pll_ref * nint, 1000);
 
-    if (nint > ((128 / vco_power_ref) - 1)) {
+    if (nint > (div(128, vco_power_ref) - 1)) {
       throw new Error("[R82XX] No valid PLL values for " + freq);
     }
 
-    const ni = ((nint - 13) / 4) | 0;
-    const si = (nint - 4 * ni - 13) | 0;
+    const ni = div(nint - 13, 4);
+    const si = nint - 4 * ni - 13;
     await this.r82xx_write(0x14, [ni + (si << 6)]);
 
     /* pw_sdm */
@@ -981,9 +981,9 @@ export class TunnerR82xx implements TunnerCtx {
     let n_sdm = 2;
     let sdm = 0;
     while (vco_fra > 1) {
-      if (vco_fra > (2 * pll_ref_khz / n_sdm)) {
-        sdm = (sdm + 32768 / (n_sdm / 2)) | 0;
-        vco_fra = vco_fra - 2 * pll_ref_khz / n_sdm;
+      if (vco_fra > div(2 * pll_ref_khz, n_sdm)) {
+        sdm = sdm + div(32768, div(n_sdm, 2));
+        vco_fra = vco_fra - div(2 * pll_ref_khz, n_sdm);
         if (n_sdm >= 0x8000)
           break;
       }

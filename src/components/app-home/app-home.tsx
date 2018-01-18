@@ -21,11 +21,11 @@ export class AppHome {
     await device.setSampleRate(2000000);
     await device.resetBuffer();
 
-    while(true) {
-      const data = await device.readData();
-      const buf = Buffer.from(data.buffer);
-      demodulator.process(buf, data.byteLength, onMsg);
-    }
+    // while(true) {
+    //   const data = await device.readData();
+    //   const buf = Buffer.from(data.buffer);
+    //   demodulator.process(buf, data.byteLength, onMsg);
+    // }
   }
 
   render() {

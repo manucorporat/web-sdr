@@ -1,6 +1,6 @@
 import { TunnerR82xx, TunnerCtx } from "./tunners/r82xx";
 
-var nu = 1;
+// var nu = 1;
 const R82XX_CHECK_VAL = 0x69;
 
 const R82XX_IF_FREQ = 3570000;
@@ -125,7 +125,6 @@ export class Device {
 
     /* Probe tuners */
     await this.set_i2c_repeater(true);
-    console.log('done');
     const tunner = await this.findTunner();
     this.tunner = new TUNNERS[tunner](this);
 
@@ -165,7 +164,7 @@ export class Device {
 
   // set_freq_correction
   async setFreqCorrection(ppm: number) {
-    const offs = ppm * (-1) * (1<<24) / 1000000;
+    const offs = div(-ppm * (1<<24), 1000000);
 
     let tmp = offs & 0xff;
     await this.write_demod(1, 0x3f, [tmp]);
@@ -210,11 +209,11 @@ export class Device {
         throw new Error("Invalid sample rate: " + samp_rate);
     }
 
-    let rsamp_ratio = (this.rtl_xtal * (1<<22)) / samp_rate;
+    let rsamp_ratio = div(this.rtl_xtal * (1<<22), samp_rate);
     rsamp_ratio &= 0x0ffffffc;
 
     const real_rsamp_ratio = rsamp_ratio | ((rsamp_ratio & 0x08000000) << 1);
-    const real_rate = ((this.rtl_xtal * (1<<22)) / real_rsamp_ratio);
+    const real_rate = div(this.rtl_xtal * (1<<22), real_rsamp_ratio);
 
     if ( samp_rate !== real_rate ) {
       console.warn("Exact sample rate is: ", real_rate);
@@ -226,11 +225,9 @@ export class Device {
     await this.set_i2c_repeater(false);
 
     let tmp = (rsamp_ratio >> 16);
-    console.log(tmp);
     await this.write_demod(1, 0x9f, [tmp >> 8, tmp & 0xff]); // REVIEW
 
     tmp = rsamp_ratio & 0xffff;
-    console.log(tmp);
     await this.write_demod(1, 0xa1, [tmp >> 8, tmp & 0xff]); // REVIEW
 
     await this.setFreqCorrection(this.corr);
@@ -256,7 +253,7 @@ export class Device {
     }
 
     /* based on keenerds 1/f noise measurements */
-    this.offs_freq = on ? ((this.rate / 2) * 170 / 100) : 0;
+    this.offs_freq = on ? div(div(this.rate, 2) * 170, 100) : 0;
     await this.set_if_freq(this.offs_freq);
 
     await this.set_i2c_repeater(true);
@@ -402,7 +399,7 @@ export class Device {
     /* read corrected clock value */
     const rtl_xtal = this.get_xtal_rtl_freq();
 
-    const if_freq = ((freq * (1<<22)) / rtl_xtal) * (-1);
+    const if_freq = div(-freq * (1<<22), rtl_xtal) ;
 
     let tmp = (if_freq >> 16) & 0x3f;
     await this.write_demod(1, 0x19, [tmp]);
@@ -453,8 +450,6 @@ export class Device {
     const buf = new Uint8Array(data.byteLength + 1);
     buf[0] = reg;
     buf.set(data, 1);
-    // console.log("t", Array.from(buf).map(i => i.toString(16)).join(''));
-
     return this.write(Block.IICB, addr, buf);
   }
 
@@ -488,11 +483,11 @@ export class Device {
     if(result.bytesWritten !== buffer.byteLength) {
       throw new Error('write wrong bytes');
     }
-    const i = (nu++)*2;
+    // const i = (nu++)*2;
     // if (i === 430) {
     //   debugger;
     // }
-    console.log('out', i, addr.toString(10), index.toString(10), buffer);
+    // console.log('out', i, addr.toString(10), index.toString(10), buffer);
     return result.bytesWritten;
   }
 
@@ -512,21 +507,20 @@ export class Device {
     if(result.data.byteLength !== len) {
       throw new Error('read wrong bytes');
     }
-    const i = (nu++)*2;
-    // if (i === 234) {
-    //   debugger;
-    // }
-    console.log('in', i, addr.toString(16), index.toString(16), new Uint8Array(result.data.buffer));
+    // const i = (nu++)*2;
+    // console.log('in', i, addr.toString(16), index.toString(16), new Uint8Array(result.data.buffer));
     return result.data;
   }
 
   private set_i2c_repeater(on: boolean) {
     return this.write_demod(1, 0x01, on ? [0x18] : [0x10]);
   }
-
 }
 
-
 function APPLY_PPM_CORR(val,ppm) {
-  return (val * (1.0 + ppm / 1e6)) | 0;
+  return (val * (1.0 + div(ppm, 1e6)));
+}
+
+export function div(a, b) {
+  return (a/b) | 0;
 }
