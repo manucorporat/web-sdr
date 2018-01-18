@@ -1,5 +1,6 @@
 import { TunnerR82xx, TunnerCtx } from "./tunners/r82xx";
 
+var nu = 1;
 const R82XX_CHECK_VAL = 0x69;
 
 const R82XX_IF_FREQ = 3570000;
@@ -112,11 +113,9 @@ export class Device {
     await device.selectConfiguration(1)
     await device.claimInterface(0);
     await device.reset();
-    // const result = await this.write(Block.USBB, UsbReg.SYSCTL, [1]);
-    // if(result !== 1) {
-    //   console.log('reset');
-    //   await device.reset();
-    // }
+
+    // dummy test
+    await this.write(Block.USBB, UsbReg.SYSCTL, [9]);
 
     this.rtl_xtal = DEF_RTL_XTAL_FREQ;
 
@@ -337,7 +336,33 @@ export class Device {
   }
 
   private async findTunner() {
-    const reg = await this.read_i2c_reg(0x34, 0x00);
+    const E4K_I2C_ADDR = 0xc8;
+    const E4K_CHECK_ADDR = 0x02;
+    const E4K_CHECK_VAL =	0x40;
+
+    const FC0013_I2C_ADDR	= 0xc6;
+    const FC0013_CHECK_ADDR =0x00;
+    const FC0013_CHECK_VAL = 0xa3;
+
+    // try {
+    //   const reg = await this.read_i2c_reg(E4K_I2C_ADDR, E4K_CHECK_ADDR);
+    //   if (reg === E4K_CHECK_VAL) {
+    //     throw new Error('not implemented');
+    //   }
+    // }catch {
+    //   await this.dev.clearHalt("in", 1);
+    // }
+
+    // try {
+    //   const reg = await this.read_i2c_reg(FC0013_I2C_ADDR, FC0013_CHECK_ADDR);
+    //   if (reg === FC0013_CHECK_VAL) {
+    //     throw new Error('not implemented');
+    //   }
+    // } catch {
+    //   await this.dev.clearHalt("in", 1);
+    // }
+
+    let reg = await this.read_i2c_reg(0x34, 0x00);
     if (reg === R82XX_CHECK_VAL) {
       return Tunner.R820T;
     }
@@ -463,6 +488,11 @@ export class Device {
     if(result.bytesWritten !== buffer.byteLength) {
       throw new Error('write wrong bytes');
     }
+    const i = (nu++)*2;
+    // if (i === 430) {
+    //   debugger;
+    // }
+    console.log('out', i, addr.toString(10), index.toString(10), buffer);
     return result.bytesWritten;
   }
 
@@ -482,6 +512,11 @@ export class Device {
     if(result.data.byteLength !== len) {
       throw new Error('read wrong bytes');
     }
+    const i = (nu++)*2;
+    // if (i === 234) {
+    //   debugger;
+    // }
+    console.log('in', i, addr.toString(16), index.toString(16), new Uint8Array(result.data.buffer));
     return result.data;
   }
 

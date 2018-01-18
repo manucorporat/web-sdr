@@ -316,7 +316,7 @@ export class TunnerR82xx implements TunnerCtx {
   xtal_cap_sel = r82xx_xtal_cap_value.XTAL_HIGH_CAP_0P;
   init_done = false;
   xtal = 0;
-  int_freq: number = 0;
+  int_freq = 0;
   regs: Uint8Array = new Uint8Array(NUM_REGS);
   has_lock: boolean = false;
   delsys = 0;
@@ -386,7 +386,7 @@ export class TunnerR82xx implements TunnerCtx {
     /* Get the proper frequency range */
     freq = freq / 1000000;
     let i = 0;
-    for (let i = 0; i < freq_ranges.length - 1; i++) {
+    for (i = 0; i < freq_ranges.length - 1; i++) {
       if (freq < freq_ranges[i + 1].freq) {
         break;
       }
@@ -864,7 +864,6 @@ export class TunnerR82xx implements TunnerCtx {
 
         /* Check if calibration worked */
         const data = await this.r82xx_read(0x00, 5);
-        debugger;
 
         this.fil_cal_code = data[4] & 0x0f;
         if (this.fil_cal_code && this.fil_cal_code !== 0x0f) {
@@ -917,9 +916,9 @@ export class TunnerR82xx implements TunnerCtx {
     const vco_max = vco_min * 2;
 
     /* Frequency in kHz */
-    const freq_khz = (freq + 500) / 1000;
+    const freq_khz = ((freq + 500) / 1000) | 0;
     const pll_ref = this.xtal;
-    const pll_ref_khz = (pll_ref + 500) / 1000;
+    const pll_ref_khz = ((pll_ref + 500) / 1000) | 0;
 
     await this.r82xx_write_reg_mask(0x10, 0, 0x10);
 
@@ -949,7 +948,7 @@ export class TunnerR82xx implements TunnerCtx {
     const data = await this.r82xx_read(0x00, 5);
 
     const vco_power_ref = (this.rafael_chip == r82xx_chip.CHIP_R828D)
-     ? 2 : 1;
+     ? 1 : 2;
 
     const vco_fine_tune = (data[4] & 0x30) >> 4;
 
@@ -961,17 +960,16 @@ export class TunnerR82xx implements TunnerCtx {
 
     await this.r82xx_write_reg_mask(0x10, div_num << 5, 0xe0);
 
-    const vco_freq = freq * mix_div;
-    const nint = vco_freq / (2 * pll_ref);
-    let vco_fra = (vco_freq - 2 * pll_ref * nint) / 1000;
+    const vco_freq = (freq | 0) * (mix_div | 0);
+    const nint = (vco_freq / (2 * pll_ref)) | 0;
+    let vco_fra = ((vco_freq - 2 * pll_ref * nint) / 1000) | 0;
 
     if (nint > ((128 / vco_power_ref) - 1)) {
       throw new Error("[R82XX] No valid PLL values for " + freq);
     }
 
-    const ni = (nint - 13) / 4;
-    const si = nint - 4 * ni - 13;
-
+    const ni = ((nint - 13) / 4) | 0;
+    const si = (nint - 4 * ni - 13) | 0;
     await this.r82xx_write(0x14, [ni + (si << 6)]);
 
     /* pw_sdm */
@@ -984,7 +982,7 @@ export class TunnerR82xx implements TunnerCtx {
     let sdm = 0;
     while (vco_fra > 1) {
       if (vco_fra > (2 * pll_ref_khz / n_sdm)) {
-        sdm = sdm + 32768 / (n_sdm / 2);
+        sdm = (sdm + 32768 / (n_sdm / 2)) | 0;
         vco_fra = vco_fra - 2 * pll_ref_khz / n_sdm;
         if (n_sdm >= 0x8000)
           break;

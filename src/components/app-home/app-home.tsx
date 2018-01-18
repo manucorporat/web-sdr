@@ -24,7 +24,6 @@ export class AppHome {
     while(true) {
       const data = await device.readData();
       const buf = Buffer.from(data.buffer);
-      console.debug(buf);
       demodulator.process(buf, data.byteLength, onMsg);
     }
   }
@@ -45,6 +44,5 @@ export class AppHome {
 }
 
 function onMsg (msg) {
-  debugger;
   console.log(msg);
 }
